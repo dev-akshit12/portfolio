@@ -3,22 +3,139 @@
 import { useEffect, useRef, useState } from "react";
 
 const IDLE_DELAY_MS = 2000;
+const DIALOG_LINES = ["Hey... recruiter", "How's the website?"] as const;
+const TYPE_SPEED_MS = 105;
+const DELETE_SPEED_MS = 58;
+const LINE_HOLD_MS = 1500;
+const BETWEEN_LINES_MS = 260;
+const MOBILE_REPEAT_DELAY_MS = 10000;
+
+type RobotMode = "pointer" | "fixed" | "disabled";
 
 export default function IdleRobotCursor() {
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isIdle, setIsIdle] = useState(false);
-  const [isEnabled, setIsEnabled] = useState(false);
+  const [mode, setMode] = useState<RobotMode>("disabled");
+  const [dialogText, setDialogText] = useState("");
+  const [isDialogVisible, setIsDialogVisible] = useState(false);
   const timeoutRef = useRef<number | null>(null);
+  const dialogTimeoutsRef = useRef<number[]>([]);
+  const mobileLoopTimeoutRef = useRef<number | null>(null);
+
+  const clearDialogTimers = () => {
+    dialogTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
+    dialogTimeoutsRef.current = [];
+  };
+
+  const clearMobileLoopTimer = () => {
+    if (mobileLoopTimeoutRef.current !== null) {
+      window.clearTimeout(mobileLoopTimeoutRef.current);
+      mobileLoopTimeoutRef.current = null;
+    }
+  };
+
+  const resetDialog = () => {
+    clearDialogTimers();
+    setDialogText("");
+    setIsDialogVisible(false);
+  };
+
+  const runDialogSequence = () => {
+    clearDialogTimers();
+    setDialogText("");
+    setIsDialogVisible(true);
+
+    let elapsed = 0;
+
+    const schedule = (callback: () => void, delay: number) => {
+      const timeoutId = window.setTimeout(callback, delay);
+      dialogTimeoutsRef.current.push(timeoutId);
+    };
+
+    DIALOG_LINES.forEach((line, lineIndex) => {
+      for (let charIndex = 1; charIndex <= line.length; charIndex += 1) {
+        elapsed += TYPE_SPEED_MS;
+        schedule(() => setDialogText(line.slice(0, charIndex)), elapsed);
+      }
+
+      elapsed += LINE_HOLD_MS;
+
+      for (let charIndex = line.length - 1; charIndex >= 0; charIndex -= 1) {
+        elapsed += DELETE_SPEED_MS;
+        schedule(() => setDialogText(line.slice(0, charIndex)), elapsed);
+      }
+
+      if (lineIndex < DIALOG_LINES.length - 1) {
+        elapsed += BETWEEN_LINES_MS;
+      }
+    });
+
+    schedule(() => {
+      setDialogText("");
+      setIsDialogVisible(false);
+    }, elapsed + 120);
+
+    return elapsed + 120;
+  };
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const finePointerQuery = window.matchMedia("(hover: hover) and (pointer: fine)");
+    const mobileQuery = window.matchMedia("(max-width: 768px)");
 
-    const updateCapability = () => {
-      const enabled = mediaQuery.matches;
-      setIsEnabled(enabled);
-      setIsIdle(false);
-      document.body.classList.remove("robot-cursor-idle");
+    const getMode = (): RobotMode => {
+      if (mobileQuery.matches) {
+        return "fixed";
+      }
+
+      if (finePointerQuery.matches) {
+        return "pointer";
+      }
+
+      return "disabled";
     };
+
+    const updateMode = () => {
+      const nextMode = getMode();
+      setMode(nextMode);
+      setIsIdle(false);
+      clearMobileLoopTimer();
+      resetDialog();
+
+      if (nextMode !== "pointer") {
+        document.body.classList.remove("robot-cursor-idle");
+      }
+    };
+
+    updateMode();
+    finePointerQuery.addEventListener("change", updateMode);
+    mobileQuery.addEventListener("change", updateMode);
+
+    return () => {
+      finePointerQuery.removeEventListener("change", updateMode);
+      mobileQuery.removeEventListener("change", updateMode);
+      document.body.classList.remove("robot-cursor-idle");
+      clearMobileLoopTimer();
+      resetDialog();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (mode !== "pointer") {
+      document.body.classList.remove("robot-cursor-idle");
+      return;
+    }
+
+    document.body.classList.toggle("robot-cursor-idle", isIdle);
+  }, [isIdle, mode]);
+
+  useEffect(() => {
+    if (mode !== "pointer") {
+      if (timeoutRef.current !== null) {
+        window.clearTimeout(timeoutRef.current);
+      }
+
+      return;
+    }
 
     const clearIdleTimeout = () => {
       if (timeoutRef.current !== null) {
@@ -29,7 +146,7 @@ export default function IdleRobotCursor() {
     const armIdleTimer = () => {
       clearIdleTimeout();
 
-      if (!mediaQuery.matches || document.hidden) {
+      if (document.hidden) {
         return;
       }
 
@@ -39,7 +156,7 @@ export default function IdleRobotCursor() {
     };
 
     const handlePointerMove = (event: PointerEvent) => {
-      if (!mediaQuery.matches || event.pointerType !== "mouse") {
+      if (event.pointerType !== "mouse") {
         return;
       }
 
@@ -49,10 +166,6 @@ export default function IdleRobotCursor() {
     };
 
     const handleActivity = () => {
-      if (!mediaQuery.matches) {
-        return;
-      }
-
       setIsIdle(false);
       armIdleTimer();
     };
@@ -72,8 +185,7 @@ export default function IdleRobotCursor() {
       armIdleTimer();
     };
 
-    updateCapability();
-    mediaQuery.addEventListener("change", updateCapability);
+    armIdleTimer();
     window.addEventListener("pointermove", handlePointerMove, { passive: true });
     window.addEventListener("pointerdown", handleActivity, { passive: true });
     window.addEventListener("wheel", handleActivity, { passive: true });
@@ -83,42 +195,82 @@ export default function IdleRobotCursor() {
 
     return () => {
       clearIdleTimeout();
-      mediaQuery.removeEventListener("change", updateCapability);
       window.removeEventListener("pointermove", handlePointerMove);
       window.removeEventListener("pointerdown", handleActivity);
       window.removeEventListener("wheel", handleActivity);
       window.removeEventListener("keydown", handleActivity);
       window.removeEventListener("blur", handlePointerLeave);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
-      document.body.classList.remove("robot-cursor-idle");
     };
-  }, []);
+  }, [mode]);
 
   useEffect(() => {
-    if (!isEnabled) {
-      document.body.classList.remove("robot-cursor-idle");
+    if (mode !== "pointer") {
       return;
     }
 
-    document.body.classList.toggle("robot-cursor-idle", isIdle);
-  }, [isEnabled, isIdle]);
+    if (!isIdle) {
+      resetDialog();
+      return;
+    }
 
-  if (!isEnabled) {
+    runDialogSequence();
+
+    return () => {
+      resetDialog();
+    };
+  }, [isIdle, mode]);
+
+  useEffect(() => {
+    clearMobileLoopTimer();
+
+    if (mode !== "fixed") {
+      return;
+    }
+
+    let isCancelled = false;
+
+    const loopDialog = () => {
+      if (isCancelled) {
+        return;
+      }
+
+      const sequenceDuration = runDialogSequence();
+
+      mobileLoopTimeoutRef.current = window.setTimeout(() => {
+        loopDialog();
+      }, sequenceDuration + MOBILE_REPEAT_DELAY_MS);
+    };
+
+    loopDialog();
+
+    return () => {
+      isCancelled = true;
+      clearMobileLoopTimer();
+      resetDialog();
+    };
+  }, [mode]);
+
+  if (mode === "disabled") {
     return null;
   }
 
+  const isFixedMode = mode === "fixed";
+  const isVisible = isFixedMode || isIdle;
+
   return (
     <div
-      className={`idle-robot-cursor ${isIdle ? "is-visible" : ""}`}
-      style={{
-        left: position.x,
-        top: position.y,
-      }}
+      className={`idle-robot-cursor ${isVisible ? "is-visible" : ""} ${
+        isFixedMode ? "is-mobile-fixed" : "is-pointer-mode"
+      }`}
+      style={isFixedMode ? undefined : { left: position.x, top: position.y }}
       aria-hidden="true"
     >
-      <div className="idle-robot-dialog">
-        <span className="idle-robot-dialog-line idle-robot-dialog-line-first">Hi recruiter</span>
-        <span className="idle-robot-dialog-line idle-robot-dialog-line-second">I am Akshit</span>
+      <div className={`idle-robot-dialog ${isDialogVisible ? "is-visible" : ""}`}>
+        <span className="idle-robot-dialog-text">
+          {dialogText}
+          <span className="idle-robot-dialog-cursor" />
+        </span>
       </div>
 
       <svg viewBox="0 0 72 72" className="idle-robot-svg">
