@@ -17,6 +17,10 @@ body {
   margin: 0;
   padding: 0;
   min-height: 100%;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  overflow-x: clip;
 }
 
 html {
@@ -72,6 +76,8 @@ body.robot-cursor-idle [role="button"] {
 
 .simple-home-shell {
   min-height: 100vh;
+  min-height: 100svh;
+  overflow-x: clip;
 }
 
 .idle-robot-cursor {
@@ -365,6 +371,7 @@ body.robot-cursor-idle [role="button"] {
   width: min(1320px, 100%);
   margin: 0 auto;
   min-height: calc(100vh - 6rem);
+  min-height: calc(100svh - 6rem);
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(360px, 0.95fr);
   align-items: center;
@@ -543,6 +550,9 @@ body.robot-cursor-idle [role="button"] {
   place-items: center;
   min-height: 36rem;
   isolation: isolate;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 .simple-portrait-ring {
@@ -663,8 +673,6 @@ body.robot-cursor-idle [role="button"] {
   width: min(1320px, 100%);
   margin: 0 auto;
   padding: 1rem clamp(1.2rem, 4vw, 3rem) 5rem;
-  content-visibility: auto;
-  contain-intrinsic-size: 900px;
 }
 
 .simple-content-block {
@@ -1033,10 +1041,14 @@ body.robot-cursor-idle [role="button"] {
 }
 
 .simple-contact-links a {
+  display: block;
   width: fit-content;
+  max-width: 100%;
   color: var(--ink);
   text-decoration: none;
   font-size: clamp(1.05rem, 1.7vw, 1.3rem);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .simple-resume-modal {
