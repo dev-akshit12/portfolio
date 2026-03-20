@@ -332,7 +332,7 @@ export default function Home() {
             </span>
           </p>
 
-          <a className="simple-resume-btn" href="/resume.pdf" download>
+          <a className="simple-resume-btn simple-resume-btn-desktop" href="/resume.pdf" download>
             Resume
           </a>
         </div>
@@ -361,6 +361,10 @@ export default function Home() {
             <span />
           </div>
         </div>
+
+        <a className="simple-resume-btn simple-resume-btn-mobile" href="/resume.pdf" download>
+          Resume
+        </a>
       </section>
 
       <section className="simple-content-section scroll-reveal" id="about">

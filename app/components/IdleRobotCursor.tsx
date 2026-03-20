@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 
 const IDLE_DELAY_MS = 2000;
+const PAGE_OPEN_DIALOG_DELAY_MS = 10000;
 const DIALOG_LINES = ["Hey... recruiter", "How's the website?"] as const;
 const TYPE_SPEED_MS = 105;
 const DELETE_SPEED_MS = 58;
 const LINE_HOLD_MS = 1500;
 const BETWEEN_LINES_MS = 260;
-type RobotMode = "pointer" | "disabled";
+type RobotMode = "pointer" | "mobile" | "disabled";
 
 export default function IdleRobotCursor() {
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -18,6 +19,7 @@ export default function IdleRobotCursor() {
   const [isDialogVisible, setIsDialogVisible] = useState(false);
   const timeoutRef = useRef<number | null>(null);
   const dialogTimeoutsRef = useRef<number[]>([]);
+  const hasShownDialogRef = useRef(false);
 
   const clearDialogTimers = () => {
     dialogTimeoutsRef.current.forEach((timeoutId) => window.clearTimeout(timeoutId));
@@ -73,7 +75,11 @@ export default function IdleRobotCursor() {
     const mobileQuery = window.matchMedia("(max-width: 768px)");
 
     const getMode = (): RobotMode => {
-      if (!mobileQuery.matches && finePointerQuery.matches) {
+      if (mobileQuery.matches) {
+        return "mobile";
+      }
+
+      if (finePointerQuery.matches) {
         return "pointer";
       }
 
@@ -193,28 +199,77 @@ export default function IdleRobotCursor() {
       return;
     }
 
-    if (!isIdle) {
+    setPosition((currentPosition) => {
+      if (currentPosition.x !== 0 || currentPosition.y !== 0) {
+        return currentPosition;
+      }
+
+      return {
+        x: window.innerWidth / 2,
+        y: window.innerHeight / 2,
+      };
+    });
+  }, [mode]);
+
+  useEffect(() => {
+    if (mode === "disabled" || hasShownDialogRef.current) {
       resetDialog();
       return;
     }
 
-    runDialogSequence();
+    let showTimeoutId: number | null = null;
+
+    const clearShowTimeout = () => {
+      if (showTimeoutId !== null) {
+        window.clearTimeout(showTimeoutId);
+        showTimeoutId = null;
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      clearShowTimeout();
+
+      if (document.hidden) {
+        resetDialog();
+        return;
+      }
+
+      if (hasShownDialogRef.current) {
+        return;
+      }
+
+      showTimeoutId = window.setTimeout(() => {
+        if (document.hidden || hasShownDialogRef.current) {
+          return;
+        }
+
+        hasShownDialogRef.current = true;
+        runDialogSequence();
+      }, PAGE_OPEN_DIALOG_DELAY_MS);
+    };
+
+    handleVisibilityChange();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
+      clearShowTimeout();
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
       resetDialog();
     };
-  }, [isIdle, mode]);
+  }, [mode]);
 
   if (mode === "disabled") {
     return null;
   }
 
-  const isVisible = isIdle;
+  const isVisible = mode === "mobile" || isIdle || isDialogVisible;
 
   return (
     <div
-      className={`idle-robot-cursor ${isVisible ? "is-visible" : ""} is-pointer-mode`}
-      style={{ left: position.x, top: position.y }}
+      className={`idle-robot-cursor ${isVisible ? "is-visible" : ""} ${
+        mode === "mobile" ? "is-mobile-fixed" : "is-pointer-mode"
+      }`}
+      style={mode === "pointer" ? { left: position.x, top: position.y } : undefined}
       aria-hidden="true"
     >
       <div className={`idle-robot-dialog ${isDialogVisible ? "is-visible" : ""}`}>

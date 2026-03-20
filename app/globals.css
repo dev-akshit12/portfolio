@@ -27,6 +27,7 @@ html {
   scroll-behavior: smooth;
   scrollbar-width: thin;
   scrollbar-color: #5f5a98 #f6efb7;
+  overscroll-behavior-x: none;
 }
 
 body {
@@ -377,6 +378,7 @@ body.robot-cursor-idle [role="button"] {
   align-items: center;
   gap: clamp(2rem, 5vw, 6rem);
   padding: 2rem clamp(1.2rem, 4vw, 3rem) 4rem;
+  overflow-x: clip;
 }
 
 .simple-copy {
@@ -456,6 +458,10 @@ body.robot-cursor-idle [role="button"] {
     transform 180ms ease,
     box-shadow 180ms ease,
     background-color 180ms ease;
+}
+
+.simple-resume-btn-mobile {
+  display: none;
 }
 
 @keyframes simpleCursorBlink {
@@ -552,7 +558,10 @@ body.robot-cursor-idle [role="button"] {
   isolation: isolate;
   width: 100%;
   max-width: 100%;
+  overflow: hidden;
+  overflow: clip;
   overflow-x: clip;
+  contain: layout paint;
 }
 
 .simple-portrait-ring {
@@ -562,6 +571,7 @@ body.robot-cursor-idle [role="button"] {
   border: 2px solid rgba(92, 88, 38, 0.48);
   border-radius: 50%;
   animation: simpleRingPulse 6s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .simple-portrait-ring::before {
@@ -581,6 +591,7 @@ body.robot-cursor-idle [role="button"] {
   overflow: hidden;
   z-index: 1;
   animation: simplePortraitFloat 6.5s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .simple-portrait img {
@@ -588,6 +599,11 @@ body.robot-cursor-idle [role="button"] {
   height: 100%;
   object-fit: cover;
   display: block;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+  touch-action: pan-y;
 }
 
 .simple-plus {
@@ -596,6 +612,7 @@ body.robot-cursor-idle [role="button"] {
   grid-template-columns: repeat(2, auto);
   gap: 0.35rem 0.7rem;
   z-index: 2;
+  pointer-events: none;
 }
 
 .simple-plus span {
@@ -643,6 +660,7 @@ body.robot-cursor-idle [role="button"] {
   z-index: 2;
   transform: rotate(20deg);
   animation: simpleLinesFloat 5.4s ease-in-out infinite;
+  pointer-events: none;
 }
 
 .simple-lines span {
@@ -1352,13 +1370,13 @@ body.robot-cursor-idle [role="button"] {
 @media (max-width: 768px) {
   .idle-robot-cursor.is-mobile-fixed .idle-robot-dialog {
     left: auto;
-    right: calc(100% + 0.45rem);
+    right: calc(100% + 0.55rem);
     top: 50%;
-    width: min(10.25rem, calc(100vw - 5.8rem));
+    width: min(11rem, calc(100vw - 5.9rem));
+    max-width: calc(100vw - 5.9rem);
     min-width: 0;
     justify-content: flex-end;
-    opacity: 1;
-    transform: translateY(-50%);
+    transform: translateY(calc(-50% + 0.2rem));
   }
 
   .idle-robot-cursor.is-mobile-fixed .idle-robot-svg {
@@ -1367,12 +1385,14 @@ body.robot-cursor-idle [role="button"] {
   }
 
   .idle-robot-cursor.is-mobile-fixed .idle-robot-dialog.is-visible {
+    opacity: 1;
     transform: translateY(-50%);
   }
 
   .idle-robot-cursor.is-mobile-fixed .idle-robot-dialog-text {
     font-size: 0.58rem;
     width: 100%;
+    max-width: 100%;
     justify-content: flex-end;
     text-align: right;
     white-space: normal;
@@ -1464,6 +1484,16 @@ body.robot-cursor-idle [role="button"] {
 
   .simple-resume-btn {
     margin-top: 1.6rem;
+  }
+
+  .simple-resume-btn-desktop {
+    display: none;
+  }
+
+  .simple-resume-btn-mobile {
+    display: inline-flex;
+    justify-self: center;
+    margin-top: 0.25rem;
   }
 
   .simple-title {
